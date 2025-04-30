@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Channels - IoT Analytics Platform</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+     <style>
+        /* Consistent body padding */
+        body {
+            padding-top: 5rem; /* Increased slightly for better spacing below fixed navbar */
+            background-color: #f8f9fa;
+            display: flex; /* Use flexbox for footer sticking */
+            flex-direction: column; /* Stack elements vertically */
+            min-height: 100vh; /* Ensure body takes at least full viewport height */
+        }
+
+        /* Push footer to the bottom */
+        main {
+            flex: 1; /* Allow main content to grow and push footer down */
+        }
+
+        /* Card enhancements */
+        .channel-card {
+            transition: transform 0.2s ease-in-out, box-shadow 0.3s ease-in-out;
+            border: none; /* Remove default border for a cleaner look with shadow */
+            border-radius: 0.5rem; /* Slightly rounder corners */
+            background-color: #fff; /* Ensure white background */
+        }
+        .channel-card:hover {
+            transform: translateY(-5px); /* Lift effect on hover */
+            box-shadow: 0 .75rem 1.5rem rgba(0,0,0,.1); /* Softer, larger shadow on hover */
+        }
+
+        /* Style the card header */
+        .channel-card .card-header {
+            background-color: #e9ecef; /* Light grey background for header */
+            border-bottom: 1px solid #dee2e6; /* Subtle border */
+            font-size: 1.1rem; /* Slightly larger header font */
+            font-weight: 600; /* Bolder header text */
+        }
+
+        /* Improve spacing and add icons for details */
+        .channel-card .list-group-item {
+            border: none; /* Remove borders inside list group */
+            padding: 0.5rem 1.25rem; /* Adjust padding */
+            display: flex; /* Align icon and text */
+            align-items: center;
+        }
+        .channel-card .list-group-item i {
+            margin-right: 0.75rem; /* Space after icon */
+            color: #6c757d; /* Muted color for icons */
+            width: 1.2em; /* Fixed width for icons for alignment */
+            text-align: center;
+        }
+         .channel-card .list-group-item code {
+             font-size: 0.9em;
+             padding: 0.2em 0.5em;
+             background-color: #e9ecef;
+             border-radius: 4px;
+         }
+
+        /* Card footer styling */
+        .channel-card .card-footer {
+            background-color: #fff; /* Keep footer background white */
+            border-top: 1px solid #f1f1f1; /* Very light top border */
+            padding-top: 1rem;
+            padding-bottom: 1rem;
+            display: flex; /* Use flexbox for button alignment */
+            justify-content: flex-end; /* Push buttons to the right */
+            gap: 0.5rem; /* Add space between buttons */
+        }
+
+        /* Title section styling */
+        .page-header {
+             border-bottom: 1px solid #dee2e6; /* Add separator below title */
+             padding-bottom: 1rem;
+             margin-bottom: 2rem !important; /* Ensure spacing */
+        }
+        .page-header h1 {
+            font-weight: 300; /* Lighter font weight for main title */
+            color: #343a40;
+        }
+         .page-header h1 i {
+             color: #0d6efd; /* Use primary color for icon */
+             margin-right: 0.5rem;
+         }
+
+        /* Footer styling */
+        .footer {
+            padding-top: 1.5rem;
+            padding-bottom: 1.5rem;
+            margin-top: 2rem; /* Add space above footer */
+            background-color: #e9ecef; /* Light background for footer */
+            text-align: center;
+            color: #6c757d; /* Muted text color */
+            font-size: 0.9em;
+        }
+
+        /* Alert styling */
+        .alert-info a {
+            font-weight: 600; /* Make link bolder */
+        }
+    </style>
+</head>
+<body>
+     <nav class="navbar navbar-expand-md navbar-dark fixed-top bg-dark shadow-sm"> <!-- Added shadow -->
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/"><i class="bi bi-cpu-fill me-2"></i>IoT Platform</a> <!-- Filled icon, added margin -->
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarCollapse">
+                <ul class="navbar-nav me-auto mb-2 mb-md-0">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/">Home</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" aria-current="page" href="/channels"><i class="bi bi-grid-fill me-1"></i>Channels</a> <!-- Added icon -->
+                    </li>
+                     <li class="nav-item">
+                        <a class="nav-link" href="/docs"><i class="bi bi-book-half me-1"></i>API Docs</a> <!-- Added icon -->
+                    </li>
+                </ul>
+                <!-- Add User/Auth section here if needed -->
+                <!-- <ul class="navbar-nav ms-auto mb-2 mb-md-0">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/logout"><i class="bi bi-box-arrow-right me-1"></i>Logout</a>
+                    </li>
+                </ul> -->
+            </div>
+        </div>
+    </nav>
+
+    <main class="container mt-4">
+        <!-- Page Header -->
+        <div class="d-flex justify-content-between align-items-center flex-wrap page-header">
+            <h1 class="display-5"><i class="bi bi-grid"></i>Channels</h1>
+            <a href="/create-channel" class="btn btn-success"><i class="bi bi-plus-lg me-1"></i> Create New Channel</a>
+        </div>
+
+         <!-- Alert Placeholder -->
+         <div id="alert-placeholder" class="mb-4"></div> <!-- Added margin bottom -->
+
+        {% if channels %}
+        <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4"> <!-- Added lg breakpoint -->
+            {% for channel in channels %}
+            <div class="col">
+                <div class="card h-100 channel-card shadow-sm"> <!-- Added custom class and initial shadow -->
+                    <div class="card-header">
+                        <i class="bi bi-diagram-3 me-1"></i> <!-- Added icon to header -->
+                        {{ channel.name }}
+                    </div>
+                    <div class="card-body pb-0"> <!-- Remove bottom padding to let list group handle it -->
+                        <p class="card-text mb-3">{{ channel.description or "No description provided." }}</p>
+                        <!-- Use List Group for structured details -->
+                        <ul class="list-group list-group-flush mb-3">
+                            <li class="list-group-item">
+                                <i class="bi bi-hash" title="Channel ID"></i> ID: <code>{{ channel.id }}</code>
+                            </li>
+                            <li class="list-group-item">
+                                <i class="bi bi-sliders" title="Fields"></i> Fields: {{ channel.fields|length }}
+                            </li>
+                            <li class="list-group-item">
+                                <i class="bi bi-calendar-plus" title="Created At"></i> Created: {{ channel.created_at[:19].replace('T', ' ') }}
+                            </li>
+                            <li class="list-group-item">
+                                <i class="bi bi-journal-arrow-down" title="Last Entry ID"></i> Last Entry: {{ channel.last_entry_id or 'N/A' }}
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="card-footer">
+                         <a href="/dashboard/{{ channel.id }}" class="btn btn-primary btn-sm" title="View Dashboard"><i class="bi bi-speedometer2"></i> Dashboard</a>
+                         <a href="/channels/{{ channel.id }}" class="btn btn-outline-secondary btn-sm" target="_blank" title="View Channel API Info"><i class="bi bi-info-circle"></i> API Info</a>
+                         <!-- Add Delete button here if needed, maybe using a modal for confirmation -->
+                         <!-- <button type="button" class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#deleteModal{{ channel.id }}">
+                             <i class="bi bi-trash"></i> Delete
+                         </button> -->
+                    </div>
+                </div>
+            </div>
+            <!-- Example Delete Modal (add one per channel if using this approach) -->
+            <!-- <div class="modal fade" id="deleteModal{{ channel.id }}" tabindex="-1" aria-labelledby="deleteModalLabel{{ channel.id }}" aria-hidden="true">
+              <div class="modal-dialog">
+                <div class="modal-content">
+                  <div class="modal-header">
+                    <h5 class="modal-title" id="deleteModalLabel{{ channel.id }}">Confirm Deletion</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                  </div>
+                  <div class="modal-body">
+                    Are you sure you want to delete the channel "{{ channel.name }}" (ID: {{ channel.id }})? This action cannot be undone.
+                  </div>
+                  <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <form action="/channels/delete/{{ channel.id }}" method="POST" style="display: inline;">
+                      <button type="submit" class="btn btn-danger">Delete Channel</button>
+                    </form>
+                  </div>
+                </div>
+              </div>
+            </div> -->
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="alert alert-info d-flex align-items-center" role="alert"> <!-- Added flex for icon alignment -->
+            <i class="bi bi-info-circle-fill flex-shrink-0 me-2" style="font-size: 1.5rem;"></i> <!-- Larger icon -->
+            <div>
+                No channels have been created yet. Why not <a href="/create-channel" class="alert-link">create one now</a>?
+            </div>
+        </div>
+        {% endif %}
+    </main>
+
+     <footer class="footer"> <!-- Changed class for styling -->
+        <div class="container">
+             <p class="mb-0">© 2024 Your IoT Platform Name</p> <!-- Added mb-0 -->
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+      // Function to display alerts
+      const displayAlert = (message, type = 'danger') => {
+        const alertPlaceholder = document.getElementById('alert-placeholder');
+        if (!alertPlaceholder) return;
+
+        const iconClass = type === 'danger' ? 'bi-exclamation-triangle-fill' : 'bi-info-circle-fill';
+
+        const wrapper = document.createElement('div');
+        wrapper.innerHTML = [
+          `<div class="alert alert-${type} alert-dismissible fade show d-flex align-items-center" role="alert">`,
+          `   <i class="bi ${iconClass} flex-shrink-0 me-2"></i>`,
+          `   <div>${message}</div>`,
+          '   <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>',
+          '</div>'
+        ].join('');
+        alertPlaceholder.append(wrapper);
+      };
+
+      // Check for messages passed via query parameters
+      document.addEventListener('DOMContentLoaded', () => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const error = urlParams.get('error');
+        const success = urlParams.get('success'); // Added success message handling
+        const channelNotFound = urlParams.get('channel_not_found'); // Specific error check
+
+        let message = '';
+        let type = 'danger';
+
+        if (error) {
+           message = decodeURIComponent(error); // Allow custom error messages
+        } else if (channelNotFound) {
+           message = 'The requested channel could not be found.';
+        } else if (success) {
+           message = decodeURIComponent(success); // Allow custom success messages
+           type = 'success';
+        }
+        // Add more specific error/success checks as needed
+
+        if (message) {
+          displayAlert(message, type);
+
+          // Clean the URL (remove query parameters without reloading)
+          if (window.history.replaceState) {
+             const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+             window.history.replaceState({ path: cleanUrl }, document.title, cleanUrl);
+          }
+        }
+      });
+    </script>
+</body>
+</html>

@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light"> {# Default theme, JS will override #}
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ channel.name }} - IoT Dashboard</title> {# Set title directly #}
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <style>
+        :root {
+            --sidebar-width: 260px;
+            --config-sidebar-width: 320px;
+            --transition-speed: 0.3s;
+            /* Customizable Colors - JS will set these */
+            --dashboard-bg: var(--bs-light-bg-subtle); /* Default Light */
+            --widget-bg: var(--bs-body-bg); /* Default Light */
+            --dashboard-accent-color: var(--bs-primary); /* Default to Bootstrap primary */
+
+            --card-border-color: var(--bs-border-color-translucent);
+            --section-heading-color: var(--bs-emphasis-color);
+        }
+        html { height: 100%; }
+        body { display: flex; min-height: 100vh; background-color: var(--dashboard-bg); overflow-x: hidden; transition: background-color var(--transition-speed) ease; }
+
+        /* --- Sidebar --- */
+        .sidebar { width: var(--sidebar-width); flex-shrink: 0; height: 100vh; position: sticky; top: 0; background-color: var(--bs-dark-bg-subtle); color: var(--bs-light-text-emphasis); padding: 1rem; padding-top: 1.5rem; display: flex; flex-direction: column; box-shadow: 0.125rem 0 0.5rem rgba(0, 0, 0, 0.1); overflow-y: auto; }
+        .sidebar-header { padding-bottom: 1rem; margin-bottom: 1.5rem; border-bottom: 1px solid var(--bs-border-color-translucent); }
+        .sidebar-header img { transition: var(--transition-speed); max-width: 60px; display: none; margin-bottom: 0.5rem; border-radius: var(--bs-border-radius-sm); }
+        .sidebar-header h5 { margin-bottom: 0.2rem; color: var(--bs-light-text); word-break: break-word; font-weight: 500; }
+        .sidebar-header p { font-size: 0.85rem; color: var(--bs-secondary-color); word-break: break-word; margin-bottom: 0; }
+        .sidebar-section { margin-bottom: 1.2rem; }
+        .sidebar-section h6 { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--bs-secondary-color); margin-bottom: 0.6rem; font-weight: 600; }
+        .sidebar-info p { margin-bottom: 0.5rem; font-size: 0.85rem; line-height: 1.4; word-break: break-all; }
+        .sidebar-info code { font-size: 0.8em; background-color: var(--bs-dark-border-subtle); color: var(--bs-light-text-emphasis); padding: 0.1em 0.3em; border-radius: 3px; }
+        .sidebar .input-group input { background-color: var(--bs-dark-bg-subtle); color: var(--bs-light-text); border-color: var(--bs-dark-border-subtle); }
+        .sidebar .input-group input:focus { background-color: var(--bs-dark-bg-subtle); color: var(--bs-light-text); }
+        .sidebar .btn-outline-secondary { color: var(--bs-secondary-color); border-color: var(--bs-secondary-color); }
+        .sidebar .btn-outline-secondary:hover { color: var(--bs-light-text); background-color: var(--bs-secondary-color); border-color: var(--bs-secondary-color); }
+        .sidebar-api-links a { display: block; color: var(--bs-light-text-emphasis); text-decoration: none; padding: 0.35rem 0.5rem; margin-left: -0.5rem; margin-right: -0.5rem; font-size: 0.85rem; border-radius: var(--bs-border-radius-sm); transition: background-color 0.15s ease; }
+        .sidebar-api-links a:hover { background-color: var(--bs-dark-border-subtle); color: var(--bs-light-text); }
+        .sidebar-api-links i { margin-right: 0.6rem; color: var(--bs-secondary-color); width: 1em; text-align: center;}
+
+        /* Main Content Area */
+        .main-content { flex-grow: 1; padding: 1.5rem 2.5rem; overflow-y: auto; height: 100vh; overflow-anchor: none; }
+        .btn-config { position: fixed; top: 1rem; right: 1rem; z-index: 1031; }
+
+        /* Widget Card Styling */
+        .widget-card { background-color: var(--widget-bg); border: 1px solid var(--card-border-color); border-radius: var(--bs-border-radius-lg); box-shadow: var(--bs-box-shadow-sm); transition: all 0.2s ease-in-out, background-color var(--transition-speed) ease; height: 100%; display: flex; flex-direction: column; overflow: hidden; } .widget-card:hover { transform: translateY(-5px); box-shadow: var(--bs-box-shadow-lg); } .widget-header { display: flex; justify-content: space-between; align-items: center; padding: 0.8rem 1.2rem; background-color: var(--bs-light-bg-subtle); border-bottom: 1px solid var(--card-border-color); } .widget-header h6 { margin-bottom: 0; font-size: 1rem; font-weight: 500; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;} .widget-header .actions { display: flex; gap: 0.3rem; flex-shrink: 0;} .widget-header .actions .btn-expand { padding: 0.1rem 0.4rem; font-size: 0.9rem; line-height: 1; } .widget-body { padding: 1.2rem; text-align: center; flex-grow: 1; display: flex; flex-direction: column; justify-content: space-between; } .widget-value-area { margin-bottom: 1rem; } .widget-value { font-size: 2.8rem; font-weight: 600; color: var(--dashboard-accent-color); line-height: 1; margin-bottom: 0.2rem; transition: color 0.4s ease; } .widget-value.updating { color: var(--bs-orange); animation: pulse 1s ease-in-out; } @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } } .widget-timestamp { font-size: 0.75rem; color: var(--bs-secondary-color); } .widget-chart-container { height: 150px; width: 100%; position: relative; }
+
+        /* Configuration Accordion */
+        .actions-api-section { background-color: var(--widget-bg); border-radius: var(--bs-border-radius-lg); box-shadow: var(--bs-box-shadow-sm); border: 1px solid var(--card-border-color); overflow: hidden; transition: background-color var(--transition-speed) ease; }
+        .accordion-button{font-weight: 500;}.accordion-button:not(.collapsed){background-color: var(--bs-primary-bg-subtle);color: var(--bs-primary-text-emphasis);}.accordion-button:focus{box-shadow: 0 0 0 0.25rem var(--bs-primary-border-subtle);}.accordion-body{background-color: var(--bs-light-bg-subtle);}.accordion-item{border: none;}.accordion-item:last-of-type .accordion-button.collapsed{border-bottom: none;}
+        pre{background-color: var(--bs-secondary-bg);border: 1px solid var(--bs-border-color-translucent);padding: 1rem;border-radius: var(--bs-border-radius);font-size: 0.85em;white-space: pre-wrap;word-break: break-all;color: var(--bs-body-color);} code{font-size: inherit;background-color: transparent;border: none;padding: 0;}
+
+        /* Modal Styles */
+        #chartModal .modal-dialog { max-width: 85%; } #chartModal .modal-body { height: 75vh; padding: 1rem; display: flex; justify-content: center; align-items: center; } #modalChartCanvas { max-width: 100%; max-height: 100%; }
+
+        /* Right Config Offcanvas */
+        .offcanvas-end { width: var(--config-sidebar-width); background-color: var(--bs-body-bg); } .offcanvas-header { background-color: var(--bs-light-bg-subtle); } .form-control-color { min-height: 2.5rem; padding: .2rem .3rem; cursor: pointer; width: 100%; }
+
+        /* Toast Styling */
+        .toast { box-shadow: var(--bs-box-shadow-lg); } .toast-header { border-bottom: 1px solid var(--bs-border-color-translucent); }
+
+        /* Animations */
+        .row > .col { animation-delay: calc(0.08s * var(--animation-order, 0)); opacity: 0; animation: fadeInUp 0.5s ease-out forwards; } @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .btn-send-success { animation: send-success-pulse 1.5s ease-out; } @keyframes send-success-pulse { 0% { background-color: var(--bs-success); border-color: var(--bs-success); color: white; transform: scale(1); } 30% { transform: scale(1.05); } 100% { background-color: var(--bs-primary); border-color: var(--bs-primary); color: white; transform: scale(1); } }
+
+        /* Showcase Editor Modal Specific Styles */
+        #showcaseEditorModal .modal-dialog { max-width: 900px; }
+        .input-list-item { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; }
+        .input-list-item input { flex-grow: 1; }
+        .list-controls button { line-height: 1; }
+        .current-file-info { font-size: 0.8rem; color: var(--bs-secondary-color); margin-top: 0.25rem; display: block; }
+        .current-file-info a { color: var(--bs-info); text-decoration: none; }
+        .current-file-info a:hover { text-decoration: underline; }
+        #qrCodeContainer { text-align: center; }
+        #qrCodeContainer img { max-width: 100%; height: auto; background-color: white; padding: 5px; border-radius: 4px; margin-top: 0.5rem; }
+        #qrCodeLink { font-size: 0.75rem; word-break: break-all; }
+    </style>
+</head>
+<body>
+    <!-- Left Sidebar -->
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            {% set logo_url = channel.metadata.get('logo_url', '') if channel.metadata else '' %}
+            <img id="sidebarTeamLogo" src="{{ logo_url }}" alt="Team Logo" class="mb-2 rounded" style="max-width: 60px; display: {{ 'block' if logo_url else 'none' }};">
+            <h5 class="text-truncate" id="sidebarTeamName">{{ channel.metadata.get('team_name', channel.name) if channel.metadata else channel.name }}</h5>
+            <p class="small text-truncate">{{ channel.description or "Channel Dashboard" }}</p>
+        </div>
+        <div class="sidebar-section sidebar-info"><h6><i class="bi bi-tags-fill me-2"></i>Details</h6><p><strong>ID:</strong> <code>{{ channel.id }}</code></p><p><strong>Created:</strong> <span class="text-muted">{{ channel.created_at[:10] }}</span></p><p><strong>Last Entry:</strong> <span id="sidebar-last-entry">{{ channel.last_entry_id }}</span></p><p><strong>Fields:</strong> <span class="text-muted">{{ channel.fields|length }}</span></p></div>
+        <div class="sidebar-section sidebar-info"><h6><i class="bi bi-key-fill me-2"></i>Write API Key</h6><div class="input-group input-group-sm mb-1"><input type="password" class="form-control shadow-none" id="apiKeyField" value="{{ channel.api_key }}" readonly><button class="btn btn-outline-secondary" type="button" id="toggleApiKey" title="Show/Hide API Key"><i class="bi bi-eye-fill"></i></button><button class="btn btn-outline-secondary" type="button" onclick="copyToClipboard('{{ channel.api_key }}')" title="Copy API Key"><i class="bi bi-clipboard"></i></button></div></div>
+        <div class="sidebar-section"> <h6><i class="bi bi-easel2-fill me-2"></i>Showcase Page</h6> <button type="button" class="btn btn-sm btn-outline-info w-100 mb-2" data-bs-toggle="modal" data-bs-target="#showcaseEditorModal"><i class="bi bi-pencil-square me-1"></i> Edit Showcase</button> <div id="qrCodeContainer" class="text-center"> <a id="showcaseLink" href="/showcase/{{ channel.id }}" target="_blank" class="small text-light text-decoration-none">View Public Page</a> <img id="qrCodeImg" src="/channels/{{ channel.id }}/showcase/qr" alt="QR Code" class="img-fluid"> <a id="qrCodeLink" href="/channels/{{ channel.id }}/showcase/qr" download="showcase-qr-{{channel.id}}.png" class="d-block small text-muted mt-1">Download QR</a> </div> </div>
+        <div class="sidebar-section sidebar-api-links"><h6><i class="bi bi-link-45deg me-2"></i>Actions & Links</h6><a href="#sendDataSection" class="sidebar-link"><i class="bi bi-send-plus-fill"></i> Send Data Manually</a><a href="#apiUsageSection" class="sidebar-link"><i class="bi bi-code-slash"></i> API Usage Examples</a><a href="/docs" target="_blank"><i class="bi bi-book"></i> Full API Docs</a></div>
+        <div class="sidebar-section mt-auto pt-3 border-top border-secondary-subtle"><a href="/channels" class="btn btn-sm btn-outline-light w-100"><i class="bi bi-arrow-left me-1"></i> All Channels</a></div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <button class="btn btn-outline-secondary btn-sm btn-config shadow-sm" type="button" data-bs-toggle="offcanvas" data-bs-target="#configOffcanvas"><i class="bi bi-palette-fill"></i> <span class="d-none d-md-inline">Customize</span></button>
+        <h2 class="mb-4 fw-light"><i class="bi bi-grid-3x3-gap-fill me-2"></i>Field Overview</h2>
+        {% if sorted_fields %}<div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-4 mb-5"> {% for field_id, field in sorted_fields.items() %} <div class="col d-flex" style="--animation-order: {{ loop.index }};"> <div class="widget-card"> <div class="widget-header"> <h6 class="text-truncate" title="{{ field.name }}">{{ field.name }}</h6> <div class="actions"> <span class="badge bg-primary-subtle text-primary-emphasis rounded-pill fw-normal me-1">F{{ field_id }}</span> <button class="btn btn-sm btn-outline-secondary btn-expand" data-field-id="{{ field_id }}" data-field-name="{{ field.name }}" data-bs-toggle="modal" data-bs-target="#chartModal" title="Expand Chart"><i class="bi bi-arrows-angle-expand"></i></button> </div> </div> <div class="widget-body"> <div class="widget-value-area"> <span class="widget-value" id="value-{{ field_id }}">{{ "%.2f"|format(field.value | default(0.0) | float) }}</span> <p class="widget-timestamp" id="updated-{{ field_id }}"><small><i class="bi bi-clock me-1"></i>{{ field.last_updated[:19].replace('T', ' ') }}</small></p> </div> <div class="widget-chart-container" id="chart-container-{{ field_id }}"> <canvas id="chart-{{ field_id }}"></canvas> </div> </div> </div> </div> {% endfor %} </div> {% else %} <div class="alert alert-info d-flex align-items-center" role="alert"><i class="bi bi-info-circle-fill me-3 fs-4"></i><div>No fields configured.</div></div> {% endif %}
+
+        <div id="actionsApiSection" class="mb-5">
+             <h2 class="mb-3 fw-light"><i class="bi bi-terminal me-2"></i>Actions & API</h2>
+             <div class="card actions-api-section">
+                 <div class="card-body p-lg-4">
+                     <!-- Send Data Form -->
+                     {% if sorted_fields %}
+                     <div id="sendDataSection" class="mb-4 pb-4 border-bottom">
+                         <h5 class="mb-3 fw-normal"><i class="bi bi-send-plus-fill me-2 text-primary"></i>Send Data Manually</h5>
+                         <form id="send-data-form" action="/dashboard/{{ channel.id }}/send_data" method="post" novalidate><p class="small text-muted mb-3">Enter numeric values and click send.</p><div class="row g-3 mb-3">{% for field_id, field in sorted_fields.items() %}<div class="col-lg-4 col-md-6 col-sm-12"><label for="form-field-{{ field_id }}" class="form-label fw-medium small">{{ field.name }} <span class="text-muted">(F{{ field_id }})</span></label><input type="text" inputmode="numeric" pattern="[0-9.-]*" class="form-control form-control-sm" id="form-field-{{ field_id }}" name="field{{ field_id }}" placeholder="Value"><div class="invalid-feedback small mt-1">Invalid number.</div></div>{% endfor %}</div><div class="d-flex gap-2 flex-wrap"><button type="submit" id="send-custom-btn" class="btn btn-primary btn-sm"><i class="bi bi-arrow-up-right-square me-1"></i> Send Values</button><button type="button" id="send-random-btn" class="btn btn-outline-secondary btn-sm"><i class="bi bi-shuffle me-1"></i> Send Random</button></div></form>
+                     </div>
+                     {% endif %}
+                     <!-- API Usage Accordion -->
+                     <div id="apiUsageSection">
+                         <h5 class="mb-3 fw-normal"><i class="bi bi-code-slash me-2 text-primary"></i>API Usage Examples</h5>
+                         <div class="accordion" id="apiUsageAccordion">
+                             <div class="accordion-item"><h2 class="accordion-header" id="headingWriteApi"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseWriteApi"><i class="bi bi-pencil-square me-2"></i>Write Data Examples</button></h2><div id="collapseWriteApi" class="accordion-collapse collapse" data-bs-parent="#apiUsageAccordion"><div class="accordion-body">{# ... Write API examples ... #}<p class="small text-muted">GET or POST.</p><strong>GET:</strong><pre><code class="language-bash">GET /update?channel_id={{ channel.id }}&api_key={{ channel.api_key }}{% for f_id in sorted_fields %}&field{{f_id}}=VALUE{% endfor %}</code></pre><strong class="mt-2 d-block">POST (JSON):</strong><pre><code class="language-json">POST /update_multiple\n...\n{\n    "channel_id": "{{ channel.id }}", "api_key": "{{ channel.api_key }}",\n    "field_values": {\n{% if sorted_fields %}{% for f_id, f in sorted_fields.items() %}        "{{ f_id }}": VALUE{{ "," if not loop.last else "" }} // {{ f.name }}\n{% endfor %}{% else %}        // "1": VALUE, ...\n{% endif %}    }\n}</code></pre></div></div></div>
+                             <div class="accordion-item"><h2 class="accordion-header" id="headingReadApi"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseReadApi"><i class="bi bi-book me-2"></i>Read Data Examples</button></h2><div id="collapseReadApi" class="accordion-collapse collapse" data-bs-parent="#apiUsageAccordion"><div class="accordion-body">{# ... Read API examples ... #}<strong>Channel Info:</strong><pre><code class="language-bash">GET /channels/{{ channel.id }}</code></pre>{% if sorted_fields %}{% set f_id = sorted_fields.keys()|first %}<strong class="mt-2 d-block">Field {{f_id}} Info:</strong><pre><code class="language-bash">GET /channels/{{ channel.id }}/fields/{{ f_id }}</code></pre><strong class="mt-2 d-block">Field {{f_id}} Data:</strong><pre><code class="language-bash">GET /channels/{{ channel.id }}/fields/{{ f_id }}/data?results=COUNT</code></pre>{% endif %}</div></div></div>
+                         </div>
+                     </div>
+                 </div>
+             </div>
+        </div>
+
+    </main>
+
+    <!-- Right Config Offcanvas Sidebar -->
+    <div class="offcanvas offcanvas-end" tabindex="-1" id="configOffcanvas" data-bs-scroll="true" data-bs-backdrop="false"> <div class="offcanvas-header border-bottom"> <h5 class="offcanvas-title" id="configOffcanvasLabel"><i class="bi bi-palette-fill me-2"></i>Customize</h5> <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button> </div> <div class="offcanvas-body"> <form id="configForm">
+        <h6 class="small fw-bold mb-3 text-muted text-uppercase">Appearance</h6>
+        <div class="mb-3 pb-3 border-bottom">
+            <div class="form-check form-switch mb-2"> <input class="form-check-input" type="checkbox" role="switch" id="themeSwitch"> <label class="form-check-label small" for="themeSwitch">Dark Mode</label> </div>
+            <div class="mb-2 row gx-2 align-items-center"> <label for="dashboardBgColor" class="col-auto col-form-label col-form-label-sm small">Dashboard BG</label><div class="col"><input type="color" class="form-control form-control-color form-control-sm w-100" id="dashboardBgColor"></div> </div>
+            <div class="mb-2 row gx-2 align-items-center"> <label for="widgetBgColor" class="col-auto col-form-label col-form-label-sm small">Widget BG</label><div class="col"><input type="color" class="form-control form-control-color form-control-sm w-100" id="widgetBgColor"></div> </div>
+            <div class="row gx-2 align-items-center"> <label for="accentColorPicker" class="col-auto col-form-label col-form-label-sm small">Accent</label> <div class="col"><input type="color" class="form-control form-control-color form-control-sm w-100" id="accentColorPicker"></div> </div>
+            <button type="button" id="resetAppearanceBtn" class="btn btn-outline-secondary btn-sm w-100 mt-3">Reset Appearance</button>
+        </div>
+        <h6 class="small fw-bold mt-4 mb-3 text-muted text-uppercase">Branding</h6>
+        <div class="mb-3"> <label for="teamNameInput" class="form-label small">Team/Project Name</label> <input type="text" class="form-control form-control-sm" id="teamNameInput" placeholder="Channel name default" value="{{ channel.metadata.get('team_name', '') if channel.metadata else '' }}"> </div>
+        <div class="mb-4 pb-3 border-bottom"> <label for="logoUrlInput" class="form-label small">Logo Image URL</label> <input type="url" class="form-control form-control-sm" id="logoUrlInput" placeholder="https://..." value="{{ channel.metadata.get('logo_url', '') if channel.metadata else '' }}"> </div>
+        <button type="submit" class="btn btn-primary btn-sm w-100"><i class="bi bi-check-lg me-1"></i> Save Branding</button>
+        <h6 class="small fw-bold mt-4 mb-3 text-muted text-uppercase">Chart Colors</h6>
+        <div id="colorPickerContainer" class="mb-3 pb-3 border-bottom"> {% if not sorted_fields %}<p class="small text-muted">No fields configured.</p>{% endif %} {% for field_id, field in sorted_fields.items() %} <div class="mb-2 row gx-2 align-items-center"> <label for="color-{{ field_id }}" class="col-auto col-form-label col-form-label-sm text-truncate" style="max-width: 100px;" title="{{ field.name }}">{{ field.name }}</label><div class="col"><input type="color" class="form-control form-control-color form-control-sm w-100" id="color-{{ field_id }}" data-field-id="{{ field_id }}"></div> </div> {% endfor %}
+        <button type="button" id="resetChartColorsBtn" class="btn btn-outline-secondary btn-sm w-100 mt-2">Reset Chart Colors</button> </div>
+         <p class="small text-muted mt-3 text-center">Appearance saves automatically.</p>
+        </form> </div> </div>
+
+    <!-- Showcase Editor Modal -->
+    <div class="modal fade" id="showcaseEditorModal" tabindex="-1"> <div class="modal-dialog modal-lg modal-dialog-scrollable"> <div class="modal-content"> <div class="modal-header"> <h1 class="modal-title fs-5" id="showcaseEditorModalLabel"><i class="bi bi-easel2-fill me-2"></i>Edit Showcase</h1> <button type="button" class="btn-close" data-bs-dismiss="modal"></button> </div> <div class="modal-body"> <form id="showcaseForm">
+        <h6 class="fw-bold small text-muted text-uppercase mb-3">Content</h6>
+        <div class="mb-3"><label for="showcaseIntro" class="form-label fw-medium">Introduction</label><textarea class="form-control" id="showcaseIntro" name="introduction" rows="5"></textarea></div>
+        <div class="mb-3"><label class="form-label fw-medium">Achievements</label><div id="achievementsList"></div><button type="button" id="addAchievementBtn" class="btn btn-outline-secondary btn-sm mt-2"><i class="bi bi-plus-lg"></i> Add</button></div>
+        {# Removed Team Members Section #}
+        <div class="mb-3"><label class="form-label fw-medium">YouTube Links</label><div id="youtubeLinksList"></div><button type="button" id="addYoutubeLinkBtn" class="btn btn-outline-secondary btn-sm mt-2"><i class="bi bi-plus-lg"></i> Add</button></div>
+        <h6 class="fw-bold small text-muted text-uppercase mt-4 mb-3">Media & Files</h6>
+        <div class="mb-3"><label for="showcasePosterFile" class="form-label fw-medium">Poster Image (Replace)</label><input type="file" class="form-control form-control-sm" id="showcasePosterFile" name="poster_image_file" accept="image/*"><span class="current-file-info" id="currentPosterFile"></span></div>
+        {# Corrected Gallery File Input #}
+        <!--<div class="mb-3"><label for="showcaseGalleryFiles" class="form-label fw-medium">Image Gallery (Select multiple, replaces existing)</label><input type="file" class="form-control form-control-sm" id="showcaseGalleryFiles" name="gallery_image_files" multiple accept="image/*"><span class="current-file-info" id="currentGalleryFiles"></span></div>-->
+        <div class="mb-3"><label for="showcaseBgFile" class="form-label fw-medium">Background Image (Showcase Page)</label><input type="file" class="form-control form-control-sm" id="showcaseBgFile" name="background_image_file" accept="image/*"><span class="current-file-info" id="currentBgFile"></span></div>
+        <h6 class="fw-bold small text-muted text-uppercase mt-4 mb-3">Presentation / Slides</h6>
+        <div class="mb-3"><label for="showcaseSlidesFile" class="form-label fw-medium">Upload Slides (Replace PDF/PPT/PPTX)</label><input type="file" class="form-control form-control-sm" id="showcaseSlidesFile" name="slides_file" accept=".pdf,.ppt,.pptx"><span class="current-file-info" id="currentSlidesFile"></span> <div class="form-text small text-center my-2">OR</div> <label for="showcaseSlidesLinkExternal" class="form-label fw-medium">Link to Online Slides</label><input type="url" class="form-control form-control-sm" id="showcaseSlidesLinkExternal" name="slides_link_external" placeholder="https://..."></div>
+        <h6 class="fw-bold small text-muted text-uppercase mt-4 mb-3">Showcase Appearance</h6>
+        <div class="row g-3"> <div class="col-md-4"><label for="showcaseBgColorPicker" class="form-label small">Background</label><input type="color" class="form-control form-control-color form-control-sm w-100" id="showcaseBgColorPicker" name="appearance_bg_color"></div> <div class="col-md-4"><label for="showcaseSectionBgColorPicker" class="form-label small">Section BG</label><input type="color" class="form-control form-control-color form-control-sm w-100" id="showcaseSectionBgColorPicker" name="appearance_section_bg_color"></div> <div class="col-md-4"><label for="showcaseAccentColorPicker" class="form-label small">Accent</label><input type="color" class="form-control form-control-color form-control-sm w-100" id="showcaseAccentColorPicker" name="appearance_accent_color"></div> </div>
+        <button type="button" id="resetShowcaseAppearanceBtn" class="btn btn-outline-secondary btn-sm w-100 mt-3">Reset Showcase Appearance</button>
+        </form> </div> <div class="modal-footer"> <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button> <button type="button" id="saveShowcaseBtn" class="btn btn-primary btn-sm"><i class="bi bi-check-lg me-1"></i> Save Showcase</button> </div> </div> </div> </div>
+
+    <!-- Chart Modal -->
+    <div class="modal fade" id="chartModal" tabindex="-1"> <div class="modal-dialog modal-xl modal-dialog-centered"> <div class="modal-content"> <div class="modal-header"> <h1 class="modal-title fs-5" id="chartModalLabel">Chart</h1> <button type="button" class="btn-close" data-bs-dismiss="modal"></button> </div> <div class="modal-body"> <canvas id="modalChartCanvas"></canvas> </div> </div> </div> </div>
+    <!-- Toast Container -->
+    <div class="toast-container position-fixed bottom-0 end-0 p-3"> <div id="liveToast" class="toast border-0" role="alert"> <div class="toast-header"> <strong class="me-auto" id="toastTitle">N</strong> <small id="toastTimestamp" class="text-muted ms-2">...</small> <button type="button" class="btn-close" data-bs-dismiss="toast"></button> </div> <div class="toast-body" id="toastBody">...</div> </div> </div>
+
+    <!-- JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // --- Global Variables & Constants ---
+        const channelId = "{{ channel.id }}"; const apiKey = "{{ channel.api_key }}"; const initialChannelName = "{{ channel.name }}";
+        const initialMetadata = JSON.parse('{{ channel.metadata | tojson | safe if channel.metadata else "{}" }}');
+        let initialShowcaseData, initialFieldsData;
+        try { initialShowcaseData = JSON.parse({{ js_showcase_json | default('"{}"') | safe }}); } catch(e) { console.error("Error parsing initial showcase JSON", e); initialShowcaseData = {}; }
+        try { initialFieldsData = JSON.parse({{ js_fields_json | default('"{}"') | safe }}); } catch(e) { console.error("Error parsing initial fields JSON", e); initialFieldsData = {}; }
+
+        const chartInstances = {}; let modalChartInstance = null; let fields = initialFieldsData; let fieldIds = Object.keys(fields);
+        let refreshIntervalId = null; const REFRESH_INTERVAL_MS = 30000; const CHART_UPDATE_OPTIONS = { duration: 0 }; const CHART_POINT_RADIUS = 1.5; const CHART_POINT_HOVER_RADIUS = 4; const CHART_TENSION = 0.3; const DEFAULT_COLORS = ['#0d6efd','#6f42c1','#d63384','#fd7e14','#ffc107','#198754','#20c997','#0dcaf0','#6c757d','#adb5bd'];
+        const LS_COLOR_PREFIX = `ch_${channelId}_color_`; const LS_THEME_KEY = 'dash_theme'; const LS_META_PREFIX = `ch_${channelId}_meta_`; const LS_DASH_BG_KEY = `ch_${channelId}_dash_bg`; const LS_WIDGET_BG_KEY = `ch_${channelId}_widget_bg`; const LS_ACCENT_COLOR_KEY = `ch_${channelId}_accent`; const LS_SHOWCASE_BG_KEY = `ch_${channelId}_showcase_bg`; const LS_SHOWCASE_SECTION_BG_KEY = `ch_${channelId}_showcase_section_bg`; const LS_SHOWCASE_ACCENT_KEY = `ch_${channelId}_showcase_accent`;
+
+        // --- Utility Functions ---
+        function showToast(title, message, type = 'info') { const tEl=document.getElementById('liveToast');if(!tEl)return;const tTitle=document.getElementById('toastTitle'),tBody=document.getElementById('toastBody'),tTime=document.getElementById('toastTimestamp');let iH='',tC='',tCl='';if(type==='success'){iH='<i class="bi bi-check-circle-fill me-2"></i>';tC='text-success-emphasis';tCl='text-bg-success-subtle';}else if(type==='error'){iH='<i class="bi bi-x-octagon-fill me-2"></i>';tC='text-danger-emphasis';tCl='text-bg-danger-subtle';}else if(type==='warning'){iH='<i class="bi bi-exclamation-triangle-fill me-2"></i>';tC='text-warning-emphasis';tCl='text-bg-warning-subtle';}else{iH='<i class="bi bi-info-circle-fill me-2"></i>';tC='text-info-emphasis';tCl='text-bg-info-subtle';} tTitle.innerHTML=iH+title;tTitle.className=`me-auto ${tC}`;tBody.textContent=message;tTime.textContent=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});tEl.className=`toast border-0 ${tCl}`;const tBs=bootstrap.Toast.getOrCreateInstance(tEl);if(tBs)tBs.show();}
+        function copyToClipboard(text) { if(!navigator.clipboard){showToast('Error Copying','Clipboard API not available.','warning');return;} navigator.clipboard.writeText(text).then(()=>showToast('Copied!','API Key copied.','success')).catch(err=>{showToast('Error Copying','Could not copy.','error');console.error('Clipboard error:',err);});}
+        function getChartColor(fieldId) { const sC=localStorage.getItem(LS_COLOR_PREFIX+fieldId); if(sC)return sC; const i=parseInt(fieldId)%DEFAULT_COLORS.length; return DEFAULT_COLORS[i];}
+        function formatTimestamp(isoString) { if(!isoString)return 'N/A'; try{const d=new Date(isoString); return isNaN(d.getTime())?'Invalid Date':d.toLocaleString();}catch(e){return isoString.substring(0,19).replace('T',' ')||'Error';}}
+        function formatValue(value, decimals = 2) { if(typeof value!=='number'||isNaN(value))return'N/A'; return value.toFixed(decimals);}
+        function debounce(func, wait) { let tO; return function(...args){ const later=()=>{clearTimeout(tO); func.apply(this, args);}; clearTimeout(tO); tO=setTimeout(later, wait);};}
+
+        // --- Theming Logic ---
+        function applyTheme(theme) { document.documentElement.setAttribute('data-bs-theme',theme); const tS=document.getElementById('themeSwitch'); if(tS){tS.checked=(theme==='dark');}}
+        function getPreferredTheme() { const sT=localStorage.getItem(LS_THEME_KEY); if(sT){return sT;} return window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'; }
+        function setTheme(theme) { localStorage.setItem(LS_THEME_KEY,theme); applyTheme(theme); }
+        function toggleTheme() { const cT=getPreferredTheme(); setTheme(cT==='dark'?'light':'dark'); }
+
+        // --- Chart and Data Update Logic ---
+        async function fetchLatestChannelData() { if(!fieldIds||fieldIds.length===0)return null;try{const r=await fetch(`/channels/${channelId}`);if(!r.ok){console.error(`Fetch channel data error: ${r.status}`);return null;}return await r.json();}catch(e){console.error('Error fetching channel data:',e);return null;} }
+        const updateSidebarAndValues = debounce(async () => { const d=await fetchLatestChannelData();if(!d)return;const e=document.getElementById('sidebar-last-entry');if(e)e.textContent=d.last_entry_id;fieldIds.forEach(id=>{const v=document.getElementById(`value-${id}`);const u=document.getElementById(`updated-${id}`);const f=d.fields?d.fields[id]:null;if(v&&u&&f){const n=formatValue(f.value);const c=v.textContent;v.textContent=n;u.innerHTML=`<small><i class="bi bi-clock me-1"></i>${formatTimestamp(f.last_updated)}</small>`;if(n!==c||v.classList.contains('updating')){v.classList.add('updating');setTimeout(()=>{v.classList.remove('updating');},1500);}}else if(v){v.textContent='N/A';v.classList.remove('updating');}}); }, 300);
+        async function updateChartData(fieldId) { const fId=parseInt(fieldId); try{const url=`/channels/${channelId}/fields/${fId}/data?results=60`;const r=await fetch(url);const dP=await r.json();if(!r.ok){throw new Error(`HTTP ${r.status}`);}if(!Array.isArray(dP)){throw new Error('Invalid data format');}const l=dP.map(p=>new Date(p.timestamp).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}));const v=dP.map(p=>typeof p.value==='number'?p.value:null);if(chartInstances[fieldId]){chartInstances[fieldId].data.labels=l;chartInstances[fieldId].data.datasets[0].data=v;chartInstances[fieldId].data.datasets[0].borderColor=getChartColor(fieldId);chartInstances[fieldId].data.datasets[0].backgroundColor=getChartColor(fieldId)+'20';chartInstances[fieldId].update(CHART_UPDATE_OPTIONS);}else{initializeChart(fieldId,l,v);}}catch(e){console.error(`Error updating chart for Field ${fieldId}:`,e);} }
+        function initializeChart(fieldId, initialLabels = [], initialValues = []) { const cE=document.getElementById(`chart-${fieldId}`);if(!cE){return;} const ctx=cE.getContext('2d');if(!ctx){return;} if(chartInstances[fieldId]){chartInstances[fieldId].destroy();} const fC=getChartColor(fieldId);const fN=fields[fieldId]?.name||`Field ${fieldId}`;chartInstances[fieldId]=new Chart(ctx,{type:'line',data:{labels:initialLabels,datasets:[{label:fN,data:initialValues,borderColor:fC,backgroundColor:fC+'20',borderWidth:1.5,tension:CHART_TENSION,fill:true,pointRadius:CHART_POINT_RADIUS,pointHoverRadius:CHART_POINT_HOVER_RADIUS,pointBackgroundColor:fC}]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},scales:{y:{beginAtZero:false,ticks:{maxTicksLimit:5,font:{size:9}}},x:{ticks:{maxRotation:0,autoSkip:true,maxTicksLimit:7,font:{size:9}}}},plugins:{legend:{display:false},tooltip:{enabled:true,backgroundColor:'rgba(0,0,0,0.75)',titleFont:{size:12},bodyFont:{size:10},padding:8,boxPadding:4,callbacks:{label:ctx=>`${ctx.dataset.label}: ${formatValue(ctx.parsed.y)}`}}},animation:{duration:800}}});}
+
+        // --- Modal Chart Logic ---
+        function openChartModal(fieldId, fieldName) { const mE=document.getElementById('chartModal');const mT=document.getElementById('chartModalLabel');const mC=document.getElementById('modalChartCanvas');const oCI=chartInstances[fieldId];if(!mE||!mT||!mC||!oCI){console.error("Modal elements/chart not found for field",fieldId);showToast("Error","Could not open expanded chart.","error");return;}mT.textContent=`${fieldName} - Expanded View`;if(modalChartInstance){modalChartInstance.destroy();modalChartInstance=null;} const ctx=mC.getContext('2d');const d=oCI.data;const fC=getChartColor(fieldId);modalChartInstance=new Chart(ctx,{type:'line',data:{labels:d.labels,datasets:[{label:fieldName,data:d.datasets[0].data,borderColor:fC,backgroundColor:fC+'20',borderWidth:2,tension:0.2,fill:true,pointRadius:2,pointHoverRadius:6,pointBackgroundColor:fC}]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},scales:{y:{beginAtZero:false,ticks:{font:{size:11}}},x:{ticks:{maxRotation:0,autoSkip:true,maxTicksLimit:15,font:{size:11}}}},plugins:{legend:{display:true,position:'top'},tooltip:{enabled:true,backgroundColor:'rgba(0,0,0,0.75)',titleFont:{size:14},bodyFont:{size:12},padding:10,boxPadding:5,callbacks:{label:ctx=>`${ctx.dataset.label}: ${formatValue(ctx.parsed.y)}`}}}}}); mE.addEventListener('hidden.bs.modal',()=>{if(modalChartInstance){modalChartInstance.destroy();modalChartInstance=null;console.log("Modal chart destroyed.");}},{once:true});}
+
+        // --- Customization Logic ---
+        function applyCustomizations() { applyTheme(getPreferredTheme()); const dashBg=localStorage.getItem(LS_DASH_BG_KEY)||getComputedStyle(document.documentElement).getPropertyValue('--bs-light-bg-subtle').trim(); const widgetBg=localStorage.getItem(LS_WIDGET_BG_KEY)||getComputedStyle(document.documentElement).getPropertyValue('--bs-body-bg').trim(); const accentColor=localStorage.getItem(LS_ACCENT_COLOR_KEY)||getComputedStyle(document.documentElement).getPropertyValue('--bs-primary').trim(); document.documentElement.style.setProperty('--dashboard-bg',dashBg); document.documentElement.style.setProperty('--widget-bg',widgetBg); document.documentElement.style.setProperty('--dashboard-accent-color',accentColor); const dashBgPicker=document.getElementById('dashboardBgColor'); const widgetBgPicker=document.getElementById('widgetBgColor'); const accentPicker=document.getElementById('accentColorPicker'); if(dashBgPicker)dashBgPicker.value=dashBg; if(widgetBgPicker)widgetBgPicker.value=widgetBg; if(accentPicker)accentPicker.value=accentColor; const sTN=localStorage.getItem(LS_META_PREFIX+'team_name')||initialMetadata?.team_name; const sLU=localStorage.getItem(LS_META_PREFIX+'logo_url')||initialMetadata?.logo_url; const tNE=document.getElementById('sidebarTeamName'); const lE=document.getElementById('sidebarTeamLogo'); if(tNE)tNE.textContent=sTN||initialChannelName; if(lE){if(sLU){lE.src=sLU;lE.style.display='block';lE.onerror=()=>{lE.style.display='none';};}else{lE.style.display='none';}} const teamNameInput=document.getElementById('teamNameInput'); const logoUrlInput=document.getElementById('logoUrlInput'); if(teamNameInput)teamNameInput.value=sTN||''; if(logoUrlInput)logoUrlInput.value=sLU||''; fieldIds.forEach(id=>{const c=getChartColor(id);const p=document.getElementById(`color-${id}`);if(p)p.value=c;if(chartInstances[id]){chartInstances[id].data.datasets[0].borderColor=c;chartInstances[id].data.datasets[0].backgroundColor=c+'20';chartInstances[id].update(CHART_UPDATE_OPTIONS);}const vE=document.getElementById(`value-${id}`);if(vE)vE.style.color=accentColor;}); document.title=`${tNE?.textContent||initialChannelName} - IoT Dashboard`; }
+        async function saveMetadata(teamName, logoUrl) { try{const r=await fetch(`/channels/${channelId}/metadata`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({team_name:teamName,logo_url:logoUrl})});if(!r.ok){const eD=await r.json();throw new Error(eD.detail||`HTTP error ${r.status}`);}const uC=await r.json();console.log("Metadata saved:",uC.metadata);localStorage.setItem(LS_META_PREFIX+'team_name',teamName);localStorage.setItem(LS_META_PREFIX+'logo_url',logoUrl);return true;}catch(e){console.error("Failed save metadata:",e);showToast("Error Saving",`Could not save: ${e.message}`,"error");return false;} }
+        function saveColor(fieldId, color) { localStorage.setItem(LS_COLOR_PREFIX+fieldId,color); if(chartInstances[fieldId]){chartInstances[fieldId].data.datasets[0].borderColor=color;chartInstances[fieldId].data.datasets[0].backgroundColor=color+'20';chartInstances[fieldId].update(CHART_UPDATE_OPTIONS);} if(modalChartInstance&&modalChartInstance.canvas.id==='modalChartCanvas'){const mT=document.getElementById('chartModalLabel').textContent; if(fields[fieldId]&&mT.includes(fields[fieldId].name)){modalChartInstance.data.datasets[0].borderColor=color;modalChartInstance.data.datasets[0].backgroundColor=color+'20';modalChartInstance.update(CHART_UPDATE_OPTIONS);}} }
+        function resetChartColors() { fieldIds.forEach(id=>{localStorage.removeItem(LS_COLOR_PREFIX+id);}); applyCustomizations(); showToast("Colors Reset","Chart colors reset.","info"); }
+        function saveBgColor(type, color) { const key=type==='dash'?LS_DASH_BG_KEY:LS_WIDGET_BG_KEY; const cssVar=type==='dash'?'--dashboard-bg':'--widget-bg'; localStorage.setItem(key,color); document.documentElement.style.setProperty(cssVar,color); }
+        function resetBgColors() { localStorage.removeItem(LS_DASH_BG_KEY); localStorage.removeItem(LS_WIDGET_BG_KEY); document.documentElement.style.removeProperty('--dashboard-bg'); document.documentElement.style.removeProperty('--widget-bg'); applyCustomizations(); showToast("Backgrounds Reset","Background colors reset.","info"); }
+        function saveAccentColor(color) { localStorage.setItem(LS_ACCENT_COLOR_KEY,color); document.documentElement.style.setProperty('--dashboard-accent-color',color); applyCustomizations(); }
+        function resetAccentColor() { localStorage.removeItem(LS_ACCENT_COLOR_KEY); document.documentElement.style.removeProperty('--dashboard-accent-color'); applyCustomizations(); showToast("Accent Reset","Accent color reset.","info"); }
+        function saveShowcaseColor(type, color) { const keyMap={'bg':LS_SHOWCASE_BG_KEY,'section':LS_SHOWCASE_SECTION_BG_KEY,'accent':LS_SHOWCASE_ACCENT_KEY}; const key=keyMap[type]; if(key)localStorage.setItem(key,color); }
+        function resetShowcaseAppearance() { localStorage.removeItem(LS_SHOWCASE_BG_KEY); localStorage.removeItem(LS_SHOWCASE_SECTION_BG_KEY); localStorage.removeItem(LS_SHOWCASE_ACCENT_KEY); const scBgP=document.getElementById('showcaseBgColorPicker');const scSecP=document.getElementById('showcaseSectionBgColorPicker');const scAccP=document.getElementById('showcaseAccentColorPicker');if(scBgP)scBgP.value='#f8f9fa';if(scSecP)scSecP.value='#ffffff';if(scAccP)scAccP.value='#0d6efd'; showToast("Showcase Reset", "Showcase appearance reset.", "info"); }
+
+        // --- Showcase Editor Logic ---
+        function addListItem(containerId, inputClass, placeholder = "Enter value", value = "", inputType = "text") { const c=document.getElementById(containerId);if(!c)return;const n=document.createElement('div');n.className='input-list-item';n.innerHTML=`<input type="${inputType}" class="form-control form-control-sm ${inputClass}" placeholder="${placeholder}" value="${value}" required><button type="button" class="btn btn-outline-danger btn-sm remove-list-item" title="Remove"><i class="bi bi-trash"></i></button>`;c.appendChild(n);n.querySelector('.remove-list-item').addEventListener('click',(e)=>{e.currentTarget.closest('.input-list-item').remove();});}
+        // REMOVED addTeamMemberItem function
+
+        // CORRECTED saveShowcaseData function (handles multi-file gallery)
+        async function saveShowcaseData() {
+            const form=document.getElementById('showcaseForm');const saveBtn=document.getElementById('saveShowcaseBtn'); const originalBtnHtml=saveBtn.innerHTML; saveBtn.disabled=true; saveBtn.innerHTML='<span class="spinner-border spinner-border-sm me-1"></span> Saving...';
+            // 1. Gather JSON data
+            const intro=document.getElementById('showcaseIntro')?.value||''; const achievements=Array.from(document.querySelectorAll('#achievementsList .achievement-input')).map(i=>i.value.trim()).filter(v=>v); const youtubeLinks=Array.from(document.querySelectorAll('#youtubeLinksList .youtube-link-input')).map(i=>i.value.trim()).filter(v=>v); const slidesLinkExternal=document.getElementById('showcaseSlidesLinkExternal')?.value.trim()||null;
+            const appearance={bg_color:document.getElementById('showcaseBgColorPicker')?.value, section_bg_color:document.getElementById('showcaseSectionBgColorPicker')?.value, accent_color:document.getElementById('showcaseAccentColorPicker')?.value};
+            const showcaseJsonData=JSON.stringify({introduction:intro, achievements:achievements, youtube_links:youtubeLinks, team_members: [], slides_link_external:slidesLinkExternal, appearance:appearance, image_urls: [] }); // Send empty team_members & image_urls
+            // 2. Create FormData & append JSON
+            const formData=new FormData(); formData.append('showcase_data',showcaseJsonData);
+            // 3. Append Single Files
+            const posterFile=document.getElementById('showcasePosterFile')?.files[0]; const slidesFile=document.getElementById('showcaseSlidesFile')?.files[0]; const bgFile=document.getElementById('showcaseBgFile')?.files[0];
+            if(posterFile){formData.append('poster_image_file',posterFile, posterFile.name);} if(slidesFile){formData.append('slides_file',slidesFile, slidesFile.name);} if(bgFile){formData.append('background_image_file',bgFile, bgFile.name);}
+            // *** Correctly append Multiple Gallery Files ***
+            const galleryFilesInput = document.getElementById('showcaseGalleryFiles');
+            if (galleryFilesInput && galleryFilesInput.files.length > 0) {
+                console.log(`Appending ${galleryFilesInput.files.length} gallery files...`);
+                for (let i = 0; i < galleryFilesInput.files.length; i++) {
+                    formData.append('gallery_image_files', galleryFilesInput.files[i], galleryFilesInput.files[i].name); // Same key
+                }
+            } else { console.log("No new gallery files selected."); }
+            // *** END Correction ***
+            console.log("Submitting Showcase FormData...");
+            // 4. Fetch request
+            try{const r=await fetch(`/channels/${channelId}/showcase`,{method:'PUT',body:formData}); if(!r.ok){const eD=await r.json();throw new Error(eD.detail||`HTTP error ${r.status}`);} const sD=await r.json(); console.log("Showcase saved:",sD);showToast("Showcase Saved","Public page updated.","success"); Object.assign(initialShowcaseData,sD); const mE=document.getElementById('showcaseEditorModal');const bM=bootstrap.Modal.getInstance(mE);if(bM)bM.hide();}catch(e){console.error("Failed save showcase:",e);showToast("Error Saving",`Could not save showcase: ${e.message}`,"error");}finally{saveBtn.disabled=false;saveBtn.innerHTML=originalBtnHtml;}
+        }
+
+        // CORRECTED populateShowcaseEditor function
+        function populateShowcaseEditor() {
+            const introE=document.getElementById('showcaseIntro');const posterFileE=document.getElementById('showcasePosterFile');const slidesFileE=document.getElementById('showcaseSlidesFile');const bgFileE=document.getElementById('showcaseBgFile');const slidesLinkE=document.getElementById('showcaseSlidesLinkExternal');const achievementsL=document.getElementById('achievementsList');const youtubeLinksL=document.getElementById('youtubeLinksList'); const currentPosterSpan=document.getElementById('currentPosterFile');const currentSlidesSpan=document.getElementById('currentSlidesFile');const currentBgSpan=document.getElementById('currentBgFile');const showcaseBgPicker=document.getElementById('showcaseBgColorPicker');const showcaseSectionBgPicker=document.getElementById('showcaseSectionBgColorPicker');const showcaseAccentPicker=document.getElementById('showcaseAccentColorPicker');const galleryFileE=document.getElementById('showcaseGalleryFiles');const currentGallerySpan=document.getElementById('currentGalleryFiles');
+            // REMOVED teamMembersL lookup
+
+            // Clear dynamic lists and file inputs
+            if(achievementsL)achievementsL.innerHTML='';if(youtubeLinksL)youtubeLinksL.innerHTML='';
+            // REMOVED teamMembersL clearing
+            if(posterFileE)posterFileE.value=null;if(slidesFileE)slidesFileE.value=null;if(bgFileE)bgFileE.value=null;if(galleryFileE)galleryFileE.value=null; // Clear gallery file input
+
+            // Populate from initialShowcaseData
+            if(introE)introE.value=initialShowcaseData?.introduction||'';if(slidesLinkE)slidesLinkE.value=initialShowcaseData?.slides_link_external||'';
+            if(currentPosterSpan)currentPosterSpan.innerHTML=initialShowcaseData?.poster_filename?`Current: <a href="${initialShowcaseData.poster_image_url}" target="_blank">${initialShowcaseData.poster_filename}</a>`:'';if(currentSlidesSpan)currentSlidesSpan.innerHTML=initialShowcaseData?.slides_filename?`Current: <a href="${initialShowcaseData.slides_url}" target="_blank">${initialShowcaseData.slides_filename}</a>`:'';if(currentBgSpan)currentBgSpan.innerHTML=initialShowcaseData?.appearance?.background_image_url?`Current: <a href="${initialShowcaseData.appearance.background_image_url}" target="_blank">View Bg Img</a>`:'';
+            // Update gallery status text correctly
+            if(currentGallerySpan)currentGallerySpan.textContent=`Currently ${initialShowcaseData?.image_urls?.length||0} gallery image(s) stored. Uploading new files replaces all.`;
+            initialShowcaseData?.achievements?.forEach(i=>addListItem('achievementsList','achievement-input','Enter achievement',i));
+            initialShowcaseData?.youtube_links?.forEach(u=>addListItem('youtubeLinksList','youtube-link-input','https://www.youtube.com/watch?v=...',u));
+            // REMOVED populating team members
+            const appearance=initialShowcaseData?.appearance||{};if(showcaseBgPicker)showcaseBgPicker.value=localStorage.getItem(LS_SHOWCASE_BG_KEY)||appearance.bg_color||'#f8f9fa';if(showcaseSectionBgPicker)showcaseSectionBgPicker.value=localStorage.getItem(LS_SHOWCASE_SECTION_BG_KEY)||appearance.section_bg_color||'#ffffff';if(showcaseAccentPicker)showcaseAccentPicker.value=localStorage.getItem(LS_SHOWCASE_ACCENT_KEY)||appearance.accent_color||'#0d6efd';
+        }
+
+
+        // --- Initialization and Event Listeners ---
+        async function initializeDashboard() {
+             console.log("Initializing dashboard..."); applyTheme(getPreferredTheme());
+             try{ const s = `{{ js_fields_json | safe }}`.trim(); fields = JSON.parse(s || '{}'); fieldIds = Object.keys(fields); console.log(`Fields parsed: ${fieldIds.length}`); } catch(e){ console.error("FATAL: Fields JSON parse error.", e); showToast("Init Error","Could not load fields.","error"); return; }
+             applyCustomizations(); // Apply styles/metadata/colors
+             if (fieldIds.length > 0) { updateSidebarAndValues(); const initPromises = fieldIds.map(id => { initializeChart(id); return updateChartData(id); }); await Promise.all(initPromises); console.log("Charts initialized."); if (refreshIntervalId) clearInterval(refreshIntervalId); refreshIntervalId = setInterval(() => { fieldIds.forEach(id => updateChartData(id)); updateSidebarAndValues(); }, REFRESH_INTERVAL_MS); } else { console.warn("No fields."); document.getElementById('configAccordion')?.classList.add('d-none'); }
+             setupEventListeners(); // Setup listeners
+             console.log("Dashboard initialized.");
+        }
+
+        function setupEventListeners() {
+             // Keep ALL previous listeners...
+             const randomBtn=document.getElementById('send-random-btn');if(randomBtn){randomBtn.addEventListener('click',async()=>{if(fieldIds.length===0){return;}const p={channel_id:channelId,api_key:apiKey,field_values:{}};fieldIds.forEach(id=>{const r=(Math.random()*100).toFixed(1);p.field_values[id]=parseFloat(r);const i=document.getElementById(`form-field-${id}`);if(i)i.value=r;});const o=randomBtn.innerHTML;randomBtn.disabled=true;randomBtn.innerHTML='<span class="spinner-border spinner-border-sm me-1"></span> Sending...';try{const rsp=await fetch(`/update_multiple`,{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify(p)});const res=await rsp.json();if(rsp.ok){showToast('Success',`Random data sent! Entry ID: ${res.entry_id}`,'success');setTimeout(()=>{updateSidebarAndValues();fieldIds.forEach(id=>updateChartData(id));},300);}else{showToast('Error Sending',`Failed: ${rsp.status}. ${res.detail||'Unknown error'}`,'error');}}catch(e){showToast('Network Error',`Could not send: ${e.message}`,'error');}finally{randomBtn.disabled=false;randomBtn.innerHTML=o;}});}
+             const dataForm=document.getElementById('send-data-form');const customSubmitBtn=document.getElementById('send-custom-btn');if(dataForm&&customSubmitBtn){dataForm.addEventListener('submit',async(event)=>{event.preventDefault();let v=true;let f=null;const i=dataForm.querySelectorAll('input[type="text"][inputmode="numeric"]');i.forEach(n=>{n.classList.remove('is-invalid');const p=/^-?\d*\.?\d+$/;if(n.value&&!p.test(n.value)){v=false;n.classList.add('is-invalid');if(!f)f=n;}});if(!v){showToast('Validation Error',`Invalid number format.`,'warning');if(f)f.focus();return;}const o=customSubmitBtn.innerHTML;customSubmitBtn.disabled=true;customSubmitBtn.innerHTML='<span class="spinner-border spinner-border-sm me-1"></span> Sending...';const d=new FormData(dataForm);try{const r=await fetch(dataForm.action,{method:'POST',body:d});const res=await r.json();if(r.ok&&res.success){showToast('Success',res.message||'Data sent!','success');customSubmitBtn.classList.add('btn-success','btn-send-success');customSubmitBtn.innerHTML='<i class="bi bi-check-lg me-1"></i> Sent!';setTimeout(()=>{customSubmitBtn.disabled=false;customSubmitBtn.classList.remove('btn-success','btn-send-success');customSubmitBtn.innerHTML=o;},1500);updateSidebarAndValues();fieldIds.forEach(id=>updateChartData(id));dataForm.reset();}else{throw new Error(res.detail||`Server error ${r.status}`);}}catch(e){console.error("Form submission error:",e);showToast('Submission Error',`Failed: ${e.message}`,'error');customSubmitBtn.disabled=false;customSubmitBtn.innerHTML=o;}});}
+             document.querySelectorAll('.btn-expand').forEach(b=>{b.addEventListener('click',(e)=>{openChartModal(e.currentTarget.dataset.fieldId,e.currentTarget.dataset.fieldName);});});
+             document.querySelectorAll('.sidebar-api-links a[href^="#"]').forEach(a=>{a.addEventListener('click',function(e){const tId=this.getAttribute('href');const tEl=document.querySelector(tId);if(tEl){const aI=tEl.closest('.accordion-item');const s=document.getElementById(tId.substring(1));if(aI){const bsC=bootstrap.Collapse.getOrCreateInstance(tEl);if(bsC)bsC.show();setTimeout(()=>{aI.scrollIntoView({behavior:'smooth',block:'nearest'});},350);}else if(s){s.scrollIntoView({behavior:'smooth',block:'start'});}}});});
+             const toggleBtn=document.getElementById('toggleApiKey');const apiKeyInput=document.getElementById('apiKeyField');if(toggleBtn&&apiKeyInput){toggleBtn.addEventListener('click',()=>{const c=apiKeyInput.getAttribute('type');if(c==='password'){apiKeyInput.setAttribute('type','text');toggleBtn.innerHTML='<i class="bi bi-eye-slash-fill"></i>';}else{apiKeyInput.setAttribute('type','password');toggleBtn.innerHTML='<i class="bi bi-eye-fill"></i>';}}); }
+             const configForm=document.getElementById('configForm');const teamNameInput=document.getElementById('teamNameInput');const logoUrlInput=document.getElementById('logoUrlInput');const colorPickers=document.querySelectorAll('#colorPickerContainer input[type="color"]');const resetChartColorsBtn=document.getElementById('resetChartColorsBtn');const themeSwitch=document.getElementById('themeSwitch');const dashboardBgPicker=document.getElementById('dashboardBgColor');const widgetBgPicker=document.getElementById('widgetBgColor');const resetAppearanceBtn=document.getElementById('resetAppearanceBtn');const accentColorPicker=document.getElementById('accentColorPicker');const showcaseBgPicker=document.getElementById('showcaseBgColorPicker');const showcaseSectionBgPicker=document.getElementById('showcaseSectionBgColorPicker');const showcaseAccentPicker=document.getElementById('showcaseAccentColorPicker');const resetShowcaseAppearanceBtn=document.getElementById('resetShowcaseAppearanceBtn');
+             if(configForm&&teamNameInput&&logoUrlInput){configForm.addEventListener('submit',async(e)=>{e.preventDefault();const s=await saveMetadata(teamNameInput.value.trim(),logoUrlInput.value.trim());if(s){applyCustomizations();showToast("Saved","Branding info saved.","success");const oE=document.getElementById('configOffcanvas');const bO=bootstrap.Offcanvas.getInstance(oE);if(bO)bO.hide();}});}
+             colorPickers.forEach(p=>{p.addEventListener('input',debounce((e)=>{saveColor(e.target.dataset.fieldId,e.target.value);},200));});
+             if(resetChartColorsBtn){resetChartColorsBtn.addEventListener('click',resetChartColors);}
+             if(themeSwitch){themeSwitch.addEventListener('change',toggleTheme);}
+             if(dashboardBgPicker){dashboardBgPicker.addEventListener('input',debounce((e)=>saveBgColor('dash',e.target.value),200));}
+             if(widgetBgPicker){widgetBgPicker.addEventListener('input',debounce((e)=>saveBgColor('widget',e.target.value),200));}
+             if(accentColorPicker){accentColorPicker.addEventListener('input',debounce((e)=>saveAccentColor(e.target.value),200));}
+             if(resetAppearanceBtn){resetAppearanceBtn.addEventListener('click',()=>{resetBgColors();resetAccentColor();});}
+             if(showcaseBgPicker){showcaseBgPicker.addEventListener('input',debounce((e)=>saveShowcaseColor('bg',e.target.value),200));}
+             if(showcaseSectionBgPicker){showcaseSectionBgPicker.addEventListener('input',debounce((e)=>saveShowcaseColor('section',e.target.value),200));}
+             if(showcaseAccentPicker){showcaseAccentPicker.addEventListener('input',debounce((e)=>saveShowcaseColor('accent',e.target.value),200));}
+             if(resetShowcaseAppearanceBtn){resetShowcaseAppearanceBtn.addEventListener('click',resetShowcaseAppearance);}
+
+             // --- Showcase Editor Listeners ---
+             const addAchievementBtn=document.getElementById('addAchievementBtn'); const addYoutubeLinkBtn=document.getElementById('addYoutubeLinkBtn'); const saveShowcaseBtn=document.getElementById('saveShowcaseBtn'); const showcaseModal=document.getElementById('showcaseEditorModal');
+             if(addAchievementBtn)addAchievementBtn.addEventListener('click',()=>{addListItem('achievementsList','achievement-input','Enter achievement');});
+             const addImageUrlBtn=document.getElementById('addImageUrlBtn'); if(addImageUrlBtn) addImageUrlBtn.style.display = 'none'; // Keep manual add URL button hidden
+             if(addYoutubeLinkBtn)addYoutubeLinkBtn.addEventListener('click',()=>{addListItem('youtubeLinksList','youtube-link-input','https://www.youtube.com/watch?v=...','','url');});
+             // REMOVED addTeamMemberBtn listener
+             if(saveShowcaseBtn)saveShowcaseBtn.addEventListener('click',saveShowcaseData);
+             document.getElementById('showcaseForm')?.addEventListener('click', function(event){if(event.target.closest('.remove-list-item')){event.target.closest('.input-list-item').remove();}});
+             if(showcaseModal){showcaseModal.addEventListener('show.bs.modal',populateShowcaseEditor);}
+
+        } // End setupEventListeners
+
+        // --- Start the dashboard initialization ---
+        document.addEventListener('DOMContentLoaded', initializeDashboard);
+
+    </script>
+
+</body>
+</html>
